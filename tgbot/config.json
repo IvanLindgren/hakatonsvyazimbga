@@ -1,3 +1,6 @@
 {
-  "p": "pasha",
-  "m": "matvey"
+  "users": {
+    "p": "pasha",
+    "m": "matvey"
+  }
+}
