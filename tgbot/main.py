@@ -1,6 +1,13 @@
 import telebot
+import json
 
-bot = telebot.TeleBot("")
+def initconfig():
+	with open('config.json', 'r') as fcc_file:
+		return json.load(fcc_file)
+
+config_data = initconfig()
+
+bot = telebot.TeleBot(config_data["tgBotAPI"])
 
 def MLMock(path):
 # чето делает
@@ -13,7 +20,13 @@ def send_welcome(message):
 
 @bot.message_handler(content_types=['photo'])
 def function_name(message):
-	bot.reply_to(message, "Картинка")
+	photo = message.photo[-1]
+	file_info = bot.get_file(photo.file_id)
+	downloaded_file = bot.download_file(file_info.file_path)
+	save_path = 'photo.jpg'
+	with open(save_path, 'wb') as new_file:
+		new_file.write(downloaded_file)
+
 
 
 @bot.message_handler(func=lambda message: True)
