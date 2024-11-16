@@ -4,7 +4,7 @@ import flet as ft
 # Класс, который отвечает за создание типовых кнопок, которые используются во всем приложении
 class Button:
     # Инициализация входных параметров
-    def __init__(self, page: ft.Page, width=400, height=80, val=None, icon_name=ft.icons.HOME) -> None:
+    def __init__(self, page: ft.Page, width=400, height=52, val=None, icon_name=ft.icons.HOME) -> None:
         self.val = val
         self.width = width
         self.page = page

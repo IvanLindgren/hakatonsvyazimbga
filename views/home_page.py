@@ -1,7 +1,6 @@
 import flet as ft
 import time
-import os
-import base64
+import zipfile
 from pathlib import Path
 from flet_navigator import *
 from utils.Buttons import Button
@@ -10,12 +9,6 @@ from utils.Buttons import Button
 @route('/')
 def home_page(pg: PageData) -> None:
     
-    # Поиск картинок в папке
-    def search_photos(path: str) -> dict:
-        for file in Path(path).iterdir():
-            if file.suffix in ['.png', '.jpg'] and file.name not in sel_files:
-                sel_files[file.name] = Path(file)
-        
     # Очистка списка выбранных файлов
     def clear_files(e) -> None:
         sel_files.clear()
@@ -133,6 +126,35 @@ def home_page(pg: PageData) -> None:
         
         sel_files_names.update() # Обновляем список на экране
 
+    def pick_zip(e: ft.FilePickerResultEvent) -> None:
+        # Если диалоговое окно закрыто и был выбран хотя бы 1 файл
+        if zip_picker.result and zip_picker.result.files:
+            
+            zip = zip_picker.result.files[0]
+            if Path(zip.name).suffix == '.zip':
+                
+                extensions = ['.png', '.jpg'] # Допустимые расширения
+                with zipfile.ZipFile(zip.path) as zf:
+                    file_names = zf.namelist()
+                    
+                    for file in file_names:
+                        if Path(file).suffix in extensions:
+                            sel_files_names.content.controls.append( 
+                                ft.Text(
+                                    file,
+                                    size=20,
+                                    color=ft.colors.WHITE,
+                                    text_align=ft.TextAlign.CENTER,
+                                    width=400
+                                )
+                            )
+                            sel_files[file] = ft.Image(Path(file))
+                            btn_see_photos.disabled = False
+                            btn_see_photos.update()
+            
+            sel_files_names.update()
+
+        
     # Настройки страницы
     pg.page.title = 'Боулинг'
     pg.page.window.width = 1000
@@ -159,8 +181,8 @@ def home_page(pg: PageData) -> None:
     # Объект для обработки выбора файла/файлов
     image_picker = ft.FilePicker(on_result=pick_images)
     folder_picker = ft.FilePicker(on_result=pick_folder)
-    pg.page.overlay.append(image_picker)
-    pg.page.overlay.append(folder_picker)
+    zip_picker = ft.FilePicker(on_result=pick_zip)
+    pg.page.overlay.extend([image_picker, folder_picker, zip_picker])
 
     # Хеш-таблица с именами файлов и путями к ним
     sel_files = dict()
@@ -176,9 +198,11 @@ def home_page(pg: PageData) -> None:
     )
 
     # Создание кнопок для главной страницы
-    btn_pick_image = Button(val='Изображение', page=pg.page, icon_name=ft.icons.IMAGE).create_btn()
-    btn_pick_folder = Button(val='Папка', page=pg.page, icon_name=ft.icons.FOLDER).create_btn()
+    btn_pick_image = Button(val='Изображение', page=pg.page, icon_name=ft.icons.IMAGE, height=52).create_btn()
+    btn_pick_folder = Button(val='Папка', page=pg.page, icon_name=ft.icons.FOLDER, height=52).create_btn()
+    btn_pick_zip = Button(val='Архив ZIP', page=pg.page, icon_name=ft.icons.ARCHIVE, height=52).create_btn()
     btn_see_photos = Button(val='Посмотреть фото', page=pg.page, icon_name=ft.icons.PLAY_ARROW_SHARP).create_btn()
+    btn_text_choose = Button(val='Выбрать: ', page=pg.page, icon_name=ft.icons.ADD).create_btn()
     
     btn_clear_files = ft.ElevatedButton(
         text='',
@@ -197,10 +221,12 @@ def home_page(pg: PageData) -> None:
         )
     )
     btn_see_photos.disabled = True
+    btn_text_choose.disabled = True
 
     # Присваиваем каждой кнопке функцию, которая будет выполняться при нажатии
     btn_pick_image.on_click = lambda _: image_picker.pick_files(allow_multiple=True)
     btn_pick_folder.on_click = lambda _: folder_picker.get_directory_path()
+    btn_pick_zip.on_click = lambda _: zip_picker.pick_files()
     btn_see_photos.on_click = lambda _: pg.navigator.navigate('/viewing_photos', page=pg.page, args=list(sel_files.values()))
     btn_clear_files.on_click = clear_files
 
@@ -215,8 +241,10 @@ def home_page(pg: PageData) -> None:
         ft.Column(
             [
                 btn_see_photos,
+                btn_text_choose,
                 btn_pick_image,
                 btn_pick_folder,
+                btn_pick_zip,
                 sel_files_field,
             ], spacing=20, horizontal_alignment=ft.CrossAxisAlignment.CENTER
         )
