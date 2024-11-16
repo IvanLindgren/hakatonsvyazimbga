@@ -1,8 +1,9 @@
 import cv2
 import numpy as np
+from main import show_image
 
 # 1. Загрузка изображения
-image = cv2.imread('test3.JPG')
+image = cv2.imread("photos/2024-10-01/2024-10-01 19-01-57.JPG")
 
 # 2. Преобразование в серый цвет
 gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
@@ -44,6 +45,4 @@ if lines is not None:
 
 # 9. Отображение результата
 # Если не работает, используйте cv2.imshow(...)
-cv2_imshow(line_image)
-cv2.waitKey(0)
-cv2.destroyAllWindows()
+show_image("test", line_image)

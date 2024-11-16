@@ -14,7 +14,6 @@ gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 # Применение бинаризации
 _, binary = cv2.threshold(gray, 150, 255, cv2.THRESH_BINARY_INV)
 
-cv2_imshow(binary)
 
 # Обнаружение границ
 # edges = cv2.Canny(binary, 50, 150, apertureSize=3)
