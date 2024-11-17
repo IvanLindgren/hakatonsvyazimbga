@@ -58,7 +58,7 @@ async def json_to_folder(players: list, json_path: str,
     async with aiofiles.open(file_path, 'w', encoding='utf-8') as f:
         await f.write(new_data_json)
 
-    print(new_data)
+
 
     return file_path
 
