@@ -206,7 +206,7 @@ async def show_menu(event):
 @router.message(CommandStart())
 async def cmd_start(message: Message):
     logger.info("Выполняется cmd_start")
-    await message.answer('Привет! Я телеграм бот для...', reply_markup=kb.menu_kb)
+    await message.answer('Привет! Я телеграм бот для анализа фото. В любой непонятной ситуации пиши /menu :)', reply_markup=kb.menu_kb)
 
 
 @router.message(Command('menu'))
@@ -493,9 +493,15 @@ async def set_photo(message: Message, state: FSMContext):
     async with aiofiles.open(photo_file_name, "wb") as f:
         await f.write(photo_file.read())
 
+    photo_file_name = 'tg_bot_2/' + photo_file_name
+    user_id = data['user_id']
+    path_for_ml_to_photo = f'tg_bot_2/json_from_ml/{user_id}'
+    os.makedirs(path_for_ml_to_photo, exist_ok=True)
+
+
     # вызов модели ml с путём к фото (в зависимости от онлайн/офлайн
     # модели, будет разный вызов)
-    # json_path = ml(photo_file_name)
+    # json_path = ml(path_for_ml_to_photo, path_for_ml_to_json)
     #  путь к JSON файлу, полученный от ML модели
 
     await state.update_data(json_path="../../bot_hakaton/json_from_ml/data.json")
