@@ -198,14 +198,14 @@ def home_page(pg: PageData) -> None:
             alignment=ft.MainAxisAlignment.CENTER,
             scroll=ft.ScrollMode.ALWAYS,
             width=400,
-            height=140
+            height=300
         )
     )
 
     # Создание кнопок для главной страницы
-    btn_pick_image = Button(val='Изображение', page=pg.page, icon_name=ft.icons.IMAGE, height=52).create_btn()
-    btn_pick_folder = Button(val='Папка', page=pg.page, icon_name=ft.icons.FOLDER, height=52).create_btn()
-    btn_pick_zip = Button(val='Архив ZIP', page=pg.page, icon_name=ft.icons.ARCHIVE, height=52).create_btn()
+    btn_pick_image = Button(val='Изображение', page=pg.page, icon_name=ft.icons.IMAGE, height=52).create_popup_button()
+    btn_pick_folder = Button(val='Папка', page=pg.page, icon_name=ft.icons.FOLDER, height=52).create_popup_button()
+    btn_pick_zip = Button(val='Архив ZIP', page=pg.page, icon_name=ft.icons.ARCHIVE, height=52).create_popup_button()
     btn_see_photos = Button(val='Посмотреть фото', page=pg.page, icon_name=ft.icons.PLAY_ARROW_SHARP).create_btn()
     btn_text_choose = Button(val='Выбрать: ', page=pg.page, icon_name=ft.icons.ADD).create_btn()
     
@@ -241,18 +241,30 @@ def home_page(pg: PageData) -> None:
         shape=ft.RoundedRectangleBorder(radius=20), 
     )
     
+    pb = ft.PopupMenuButton(
+        content=btn_text_choose,
+        items=[
+            btn_pick_image,
+            btn_pick_folder,
+            btn_pick_zip
+        ],
+        menu_position=ft.PopupMenuPosition.UNDER,
+        tooltip='Выберите нужный формат',
+        
+    )
+
     # Добавляем все созданные объекты на страницу
     pg.page.add(
         ft.Column(
             [
-                btn_see_photos,
-                btn_text_choose,
-                btn_pick_image,
-                btn_pick_folder,
-                btn_pick_zip,
-                sel_files_field,
+                btn_see_photos, pb, sel_files_field
+                
             ], spacing=20, horizontal_alignment=ft.CrossAxisAlignment.CENTER
         )
     )
-    
+    '''btn_text_choose,
+                btn_pick_image,
+                btn_pick_folder,
+                btn_pick_zip,
+                sel_files_field,'''
 

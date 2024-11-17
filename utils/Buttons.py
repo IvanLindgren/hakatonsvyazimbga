@@ -35,3 +35,25 @@ class Button:
         )
         
         return btn
+    
+    def create_popup_button(self) -> ft.PopupMenuItem:
+        txt = ft.Text(value=self.val,
+                      color=ft.colors.WHITE,
+                      text_align=ft.TextAlign.CENTER,
+                      size=30,
+                      weight=ft.FontWeight.W_700,
+        )
+
+        btn = ft.PopupMenuItem(
+            content=ft.Row(
+                [
+                    ft.Icon(self.icon_name, size=30, color=ft.colors.WHITE),
+                    txt,
+                ],
+                alignment=ft.MainAxisAlignment.START,
+                spacing=30
+            ),
+            height=52
+        )
+
+        return btn

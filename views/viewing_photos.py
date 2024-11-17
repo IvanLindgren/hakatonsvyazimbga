@@ -98,13 +98,3 @@ def viewing_photos(pg: PageData) -> None:
     )
     
     pg.page.add(all_content)
-
-    
-    
-    
-
-    
-    
-    
-
-   
