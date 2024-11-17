@@ -246,7 +246,6 @@ def home_page(pg: PageData) -> None:
         items=[
             btn_pick_image,
             btn_pick_folder,
-            btn_pick_zip
         ],
         menu_position=ft.PopupMenuPosition.UNDER,
         tooltip='Выберите нужный формат',

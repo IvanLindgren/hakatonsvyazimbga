@@ -40,8 +40,8 @@ def viewing_photos(pg: PageData) -> None:
         on_click=lambda _: pg.navigator.navigate('/', page=pg.page)
     )
 
-    btn_recognize = Button(val='Распознать', page=pg.page, height=52).create_btn()
-    btn_recognize.on_click = lambda _: pg.navigator.navigate('/manage_names_page', page=pg.page, args=cur_photo.content)
+    btn_recognize = Button(val='Ввести имена', page=pg.page, height=52).create_btn()
+    btn_recognize.on_click = lambda _: pg.navigator.navigate('/manage_names_page', page=pg.page, args=pathes[images.index(cur_photo.content)])
 
     # Верхняя панель приложенияы
     pg.page.appbar = ft.AppBar(
