@@ -2,8 +2,10 @@ import flet as ft
 from flet_navigator import *
 import matplotlib.pyplot as plt
 import datetime
+import matplotlib
 import json
 from utils.Buttons import Button
+matplotlib.use('agg')
 
 
 @route('/statistics_page')
@@ -140,7 +142,6 @@ def statistics_page(pg: PageData) -> None:
     output = ft.Card(
         height=500, 
         width=800,
-        
     )
 
     btns = ft.Row(
@@ -148,7 +149,7 @@ def statistics_page(pg: PageData) -> None:
             btn_calculate_scores,
             btn_plot_player_performance
         ],
-        alignment=ft.CrossAxisAlignment.CENTER
+        alignment=ft.MainAxisAlignment.CENTER
     )
 
     pg.page.add(ft.Column([btns, output], horizontal_alignment=ft.CrossAxisAlignment.CENTER))
