@@ -26,7 +26,7 @@ def is_integer(value):
         return False
 
 async def json_to_folder(players: list, json_path: str,
-                         date: datetime, photo_id: str, user_id:str, num_game:int) -> str:
+                         date: datetime, user_id:str, num_game:int) -> str:
     new_data = {}
     count = 0
     date_str = date.strftime('%d.%m.%Y')
@@ -54,7 +54,76 @@ async def json_to_folder(players: list, json_path: str,
     async with aiofiles.open(file_path, 'w', encoding='utf-8') as f:
         await f.write(new_data_json)
 
+    print(new_data)
+
     return file_path
+
+async def create_or_update_names_file(folder_path: str, game_data: dict, num_game: int):
+    """
+    Создаёт или обновляет JSON-файл names.json с информацией об игроках за конкретный день.
+    :param folder_path: Путь к папке с данными за день.
+    :param game_data: Данные игры (имена игроков и их результаты).
+    :param num_game: Номер текущей игры.
+    """
+    names_file_path = os.path.join(folder_path, "names.json")
+    names_data = {}
+
+    # Если файл уже существует, загрузим его данные
+    if os.path.exists(names_file_path):
+        async with aiofiles.open(names_file_path, 'r', encoding='utf-8') as f:
+            content = await f.read()
+            if content:
+                names_data = json.loads(content)
+
+    # Обновляем информацию для каждого игрока из game_data
+    for player, scores in game_data.items():
+        # Проверяем, что scores — это список
+        if not isinstance(scores, list):
+            continue
+
+        # Последнее значение в списке — это финальный счёт
+        final_score = scores[-1] if scores else 0
+        total_points = (final_score - 100) // 30
+
+        if player not in names_data:
+            names_data[player] = {
+                "GAMES": [f"GAME{num_game}"],
+                "POINTS": total_points,
+                "TOTAL_SCORE": final_score
+            }
+        else:
+            names_data[player]["GAMES"].append(f"GAME{num_game}")
+            names_data[player]["POINTS"] += total_points
+            names_data[player]["TOTAL_SCORE"] += final_score
+
+    # Записываем обновлённые данные обратно в names.json
+    updated_names_json = json.dumps(names_data, indent=4)
+    async with aiofiles.open(names_file_path, 'w', encoding='utf-8') as f:
+        await f.write(updated_names_json)
+
+
+def get_combined_player_stats(data_dicts):
+    result = ""
+    count = 0
+    for idx, data in enumerate(data_dicts):  # Обрабатываем каждый словарь из списка
+        result += f"Данные из  {idx + 1} дня:\n"  # Добавляем информацию о словаре
+        for player_id, stats in data.items():
+            num_games = len(stats['GAMES'])
+            points = stats['POINTS']
+            total_score = stats['TOTAL_SCORE']
+            avg_score = total_score / num_games if num_games > 0 else 0
+
+            result += f"  Игрок {player_id}:\n"
+            result += f"    Количество игр: {num_games}\n"
+            result += f"    POINTS: {points}\n"
+            result += f"    TOTAL_SCORE: {total_score}\n"
+            result += f"    Среднее количество очков: {avg_score:.2f}\n"
+        result += "\n"  # Разделитель между словарями
+
+    return result
+
+
+
 
 async def change_rez_func(file_path:str, change_rez:list)->bool:
     async with aiofiles.open(file_path, 'r', encoding='utf-8') as file:
@@ -92,6 +161,23 @@ def process_player_data(data: dict, players: list) -> str:
     return result
 
 
+def get_player_stats(data):
+    result = ""
+    for player_id, stats in data.items():
+        num_games = len(stats['GAMES'])
+        points = stats['POINTS']
+        total_score = stats['TOTAL_SCORE']
+        avg_score = total_score / num_games if num_games > 0 else 0
+
+        result += f"Игрок {player_id}:\n"
+        result += f"  Количество игр: {num_games}\n"
+        result += f"  Очки: {points}\n"
+        result += f"  Результат: {total_score}\n"
+        result += f"  Среднее количество очков: {avg_score:.2f}\n\n"
+
+    return result
+
+
 # Определяем состояния для FSM
 class Register(StatesGroup):
     photo = State()
@@ -103,6 +189,8 @@ class Register(StatesGroup):
     json_file_path = State()
     user_id = State()
     num_game = State()
+    generate_report_one_day_date = State()
+    generate_report_several_day_date = State()
 
 
 async def show_menu(event):
@@ -133,19 +221,108 @@ async def handle_menu_callback(callback: CallbackQuery, state: FSMContext):
     await show_menu(callback.message)
 
 
-@router.callback_query(F.data == 'print_help')
-async def print_help(callback: CallbackQuery):
-    await callback.answer()
-    await callback.message.answer('Помощь по использованию бота... (функция не дописана)')
-
 
 @router.callback_query(F.data == 'view_data')
 async def view_data(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
-    await callback.message.answer('Данные для просмотра... (функция не дописана)')
+    await callback.message.answer('Выберите вариант просмотре данных',
+                                  reply_markup=kb.view_data_kb)
 
     user_id = callback.from_user.id
     await state.update_data(user_id=user_id)
+
+
+@router.callback_query(F.data.in_(['generate_report_one_day', 'generate_report_several_days']))
+async def generate_report_one_day_func(callback: CallbackQuery, state: FSMContext):
+    await callback.answer()
+    result = ''
+    data = await state.get_data()
+
+    user_id = data['user_id']
+    folder_path = f'json_files/{user_id}'
+    folders = [f for f in os.listdir(folder_path) if os.path.isdir(os.path.join(folder_path, f))]
+
+    for i in folders:
+        result += i + '\n'
+
+    await callback.message.answer('Вот список возможных дат:\n' + result)
+
+    if callback.data == 'generate_report_one_day':
+        await state.set_state(Register.generate_report_one_day_date)
+        await callback.message.answer('Выберите дату для просмотра данных:')
+    else:
+        await state.set_state(Register.generate_report_several_day_date)
+        await callback.message.answer('Выберите даты для просмотра данных (через пробел):')
+
+    await callback.message.edit_reply_markup()
+
+
+@router.message(Register.generate_report_several_day_date)
+async def handle_player_names(message: Message, state: FSMContext):
+    date_in_msg = []
+    list_of_dict = []
+    try:
+        input_user = message.text.strip().split()
+        for i in input_user:
+            date_in_msg.append(datetime.datetime.strptime(i, "%d.%m.%Y").date())  # Сохраняем даты в список
+    except ValueError:
+        await message.answer("Неверный формат даты. Пожалуйста, используйте формат ДД.ММ.ГГГГ.")
+        return
+
+    await state.update_data(generate_report_several_day_date=date_in_msg)
+    data = await state.get_data()
+    user_id = data['user_id']
+    date = data['generate_report_several_day_date']
+
+    for i in date:
+        date_str = i.strftime('%d.%m.%Y')
+
+        folder_path = f'json_files/{user_id}/{date_str}/names.json'
+        if os.path.exists(folder_path):
+            async with aiofiles.open(folder_path, "r", encoding='utf-8') as file:
+                content = await file.read()
+                if content:  # Проверяем, что файл не пустой
+                    list_of_dict.append(json.loads(content))
+                else:
+                    await message.answer(f"Файл для {date_str} пуст.")
+                    return
+        else:
+            await message.answer(f"Данные для {date_str} не внесены.")
+            return
+
+    result = get_combined_player_stats(list_of_dict)
+
+    await message.answer(result, reply_markup=kb.menu_kb)
+
+@router.message(Register.generate_report_one_day_date)
+async def handle_player_names(message: Message, state: FSMContext):
+    try:
+        date_in_msg = datetime.datetime.strptime(message.text.strip(), "%d.%m.%Y").date()
+    except ValueError:
+        await message.answer("Неверный формат даты. Пожалуйста, используйте формат ДД.ММ.ГГГГ.")
+        return
+
+    await state.update_data(generate_report_one_day_date=date_in_msg)
+    data = await state.get_data()
+    user_id = data['user_id']
+    date = data['generate_report_one_day_date']
+
+    date_str = date.strftime('%d.%m.%Y')
+
+    folder_path = f'json_files/{user_id}/{date_str}/names.json'
+    if os.path.exists(folder_path):
+        async with aiofiles.open(folder_path, "r", encoding='utf-8') as file:
+            content = await file.read()
+            js_dict1 = json.loads(content)
+    else:
+        await message.answer("Данные за эту дату не внесены.")
+        return
+
+    result = get_player_stats(js_dict1)
+
+    await message.answer(result, reply_markup=kb.menu_kb)
+
+
 
 
 
@@ -279,7 +456,7 @@ async def set_photo(message: Message, state: FSMContext):
     photo_file = await bot.download_file(photo_file_path)
 
     # Убедимся, что директория существует
-    folder_path = f'photos/{data["user_id"]}'
+    folder_path = f'photos/{data['user_id']}'
     os.makedirs(folder_path, exist_ok=True)
 
     # Формируем путь для сохранения файла
@@ -293,7 +470,7 @@ async def set_photo(message: Message, state: FSMContext):
     # json_path = ml(photo_file_name)
     #  путь к JSON файлу, полученный от ML модели
 
-    await state.update_data(json_path="json_from_ml/data.json")
+    await state.update_data(json_path="../../bot_hakaton/json_from_ml/data.json")
 
 
 
@@ -387,8 +564,7 @@ async def show_calculate_state(message: Message, state: FSMContext):
     if not data.get('json_file_path'):
 
         path = await json_to_folder(data['players'], data['json_path'],
-                   data['date'], data['photo'].file_id, data['user_id'],
-                                    data['num_game'])
+                   data['date'], data['user_id'], data['num_game'])
         await state.update_data(json_file_path=path)
 
 
@@ -444,6 +620,29 @@ async def send_json(callback: CallbackQuery, state: FSMContext):
 
     await callback.message.answer_document(file, reply_markup=kb.menu_kb)
     await callback.message.edit_reply_markup()
+
+    user_id = data['user_id']
+    date = data['date']
+
+    date_str = date.strftime('%d.%m.%Y')
+
+    folder_path = f'json_files/{user_id}/{date_str}'
+
+    num_game = data['num_game']
+
+    if data.get('json_file_path'):
+        async with aiofiles.open(data['json_file_path'], "r", encoding='utf-8') as file:
+            content = await file.read()
+            js_dict1 = json.loads(content)
+    else:
+        async with aiofiles.open(data['json_path'], "r", encoding='utf-8') as file:
+            content = await file.read()
+            js_dict1 = json.loads(content)
+
+    await create_or_update_names_file(folder_path, js_dict1, num_game)
+
+
     await state.clear()
+
 
 
