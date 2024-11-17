@@ -76,7 +76,7 @@ def main():
     Основная функция запуска алгоритма.
     """
     image_path = "photos/2024-10-01/2024-10-01 19-01-57.JPG"
-    api_key = "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"  # Вставьте сюда ваш ключ OpenAI
+    api_key = "api-key"  # Вставьте сюда ваш ключ OpenAI
 
     try:
         # Уменьшение размера изображения и кодирование в base64
