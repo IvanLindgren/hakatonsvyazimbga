@@ -1,6 +1,6 @@
 import flet as ft # Фреймворк для создания графического приложения
 from flet_navigator import *
-from utils.Buttons import Button
+from desktop.utils.Buttons import Button
 
 
 @route('/viewing_photos')

@@ -4,8 +4,7 @@ import zipfile
 import base64
 from pathlib import Path
 from flet_navigator import *
-from utils.Buttons import Button
-from PIL import Image
+from desktop.utils.Buttons import Button
 
 
 @route('/')

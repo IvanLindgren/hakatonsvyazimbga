@@ -1,7 +1,6 @@
 import flet as ft
 from flet_navigator import *
-from utils.Buttons import Button
-from alghorithm_desktop import ml_alg
+from desktop.alghorithm_desktop import ml_alg
 
 
 @route('/manage_names_page')
