@@ -28,4 +28,3 @@ show_calculate_state_kb = InlineKeyboardMarkup(inline_keyboard=[
 ])
 
 
-

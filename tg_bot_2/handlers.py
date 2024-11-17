@@ -5,12 +5,14 @@ from aiogram.fsm.state import StatesGroup, State
 from aiogram.fsm.context import FSMContext
 from aiogram.types import FSInputFile
 
+
 import datetime
 import json
 import os
-import aiofiles
+
 
 import keyboards as kb
+
 
 router = Router()
 
@@ -24,7 +26,7 @@ def is_integer(value):
         return False
 
 async def json_to_folder(players: list, json_path: str,
-                         date: datetime, photo_id: str) -> str:
+                         date: datetime, photo_id: str, user_id:str, num_game:int) -> str:
     new_data = {}
     count = 0
     date_str = date.strftime('%d.%m.%Y')
@@ -42,11 +44,11 @@ async def json_to_folder(players: list, json_path: str,
             count += 1
 
     # Убедимся, что директория существует
-    folder_path = f'json_files/{date_str}'
+    folder_path = f'json_files/{user_id}/{date_str}'
     os.makedirs(folder_path, exist_ok=True)
 
     # Записываем данные в новый файл асинхронно
-    file_path = f'{folder_path}/{photo_id}.json'
+    file_path = f'{folder_path}/{num_game}_game.json'
     new_data_json = json.dumps(new_data, indent=4)
 
     async with aiofiles.open(file_path, 'w', encoding='utf-8') as f:
@@ -54,9 +56,10 @@ async def json_to_folder(players: list, json_path: str,
 
     return file_path
 
-def change_rez_func(file_path:str, change_rez:list)->bool:
-    with open(file_path, "r") as file:
-        js_dict1:dict = json.load(file)
+async def change_rez_func(file_path:str, change_rez:list)->bool:
+    async with aiofiles.open(file_path, 'r', encoding='utf-8') as file:
+        content = await file.read()
+        js_dict1: dict = json.loads(content)
 
     if change_rez[0] in js_dict1:
         js_dict1[change_rez[0]][int(change_rez[1])-1] = int(change_rez[2])
@@ -65,8 +68,8 @@ def change_rez_func(file_path:str, change_rez:list)->bool:
 
     new_data_json=json.dumps(js_dict1, indent=4)
 
-    with open(file_path, 'w', encoding='utf-8') as f:
-         f.write(new_data_json)
+    async with aiofiles.open(file_path, 'w', encoding='utf-8') as f:
+        await f.write(new_data_json)
 
     return True
 
@@ -98,6 +101,8 @@ class Register(StatesGroup):
     json_path = State()
     change_rez = State()
     json_file_path = State()
+    user_id = State()
+    num_game = State()
 
 
 async def show_menu(event):
@@ -123,6 +128,7 @@ async def handle_menu_command(message: Message, state: FSMContext):
 async def handle_menu_callback(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
     await state.clear()
+
     await callback.message.edit_reply_markup()
     await show_menu(callback.message)
 
@@ -134,9 +140,13 @@ async def print_help(callback: CallbackQuery):
 
 
 @router.callback_query(F.data == 'view_data')
-async def view_data(callback: CallbackQuery):
+async def view_data(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
     await callback.message.answer('Данные для просмотра... (функция не дописана)')
+
+    user_id = callback.from_user.id
+    await state.update_data(user_id=user_id)
+
 
 
 ### 3. Обработчики для установки имён игроков
@@ -144,7 +154,9 @@ async def view_data(callback: CallbackQuery):
 @router.callback_query(F.data == 'set_name')
 async def start_set_name(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
+
     await state.set_state(Register.players)
+
     await callback.message.answer('Напишите имена игроков (через пробел):')
     await callback.message.edit_reply_markup()
 
@@ -183,7 +195,9 @@ async def handle_player_names(message: Message, state: FSMContext):
 async def start_set_date(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
     await callback.message.answer('Пожалуйста, отправьте дату в формате ДД.ММ.ГГГГ:')
+
     await state.set_state(Register.date)
+
     await callback.message.edit_reply_markup()
 
 
@@ -219,9 +233,10 @@ async def handle_date(message: Message, state: FSMContext):
 @router.callback_query(F.data.in_(['change_photo', 'add_photo']))
 async def add_photo(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
-
     await state.clear()
 
+    user_id = callback.from_user.id
+    await state.update_data(user_id=user_id)
     await state.set_state(Register.photo)
 
     if callback.data == 'change_photo':
@@ -233,6 +248,7 @@ async def add_photo(callback: CallbackQuery, state: FSMContext):
 
 @router.message(Register.photo)
 async def set_photo(message: Message, state: FSMContext):
+    from main import bot
     if not message.photo:
         await message.answer("Пожалуйста, пришлите фото.")
         return
@@ -255,11 +271,35 @@ async def set_photo(message: Message, state: FSMContext):
         reply_markup=kb.photo_kb
     )
 
+    data = await state.get_data()
+    photo_data = data.get('photo')
+    # Получаем путь к файлу
+    photo_file_info = await bot.get_file(photo_data.file_id)
+    photo_file_path = photo_file_info.file_path
+    photo_file = await bot.download_file(photo_file_path)
+
+    # Убедимся, что директория существует
+    folder_path = f'photos/{data["user_id"]}'
+    os.makedirs(folder_path, exist_ok=True)
+
+    # Формируем путь для сохранения файла
+    photo_file_name = f"{folder_path}/{photo_data.file_id}.jpg"
+
+    async with aiofiles.open(photo_file_name, "wb") as f:
+        await f.write(photo_file.read())
+
+    # вызов модели ml с путём к фото (в зависимости от онлайн/офлайн
+    # модели, будет разный вызов)
+    # json_path = ml(photo_file_name)
+    #  путь к JSON файлу, полученный от ML модели
+
+    await state.update_data(json_path="json_from_ml/data.json")
+
+
 
 @router.callback_query(F.data.in_(['do_calculate_offline', 'do_calculate_online']))
 async def do_calculate(callback: CallbackQuery, state: FSMContext):
-    from main import bot
-    # await callback.answer()
+
 
     data = await state.get_data()
 
@@ -272,40 +312,50 @@ async def do_calculate(callback: CallbackQuery, state: FSMContext):
         await callback.answer('Фото не выбрано!', show_alert=True)
         return
 
-    # Получаем путь к файлу
-    photo_file_info = await bot.get_file(photo_data.file_id)
-    photo_file_path = photo_file_info.file_path
-    photo_file = await bot.download_file(photo_file_path)
 
-    # Формируем путь для сохранения файла
-    photo_file_name = f"photos/{photo_data.file_id}.jpg"
-    with open(photo_file_name, "wb") as f:
-        f.write(photo_file.read())
 
-    # вызов модели ml с путём к фото (в зависимости от онлайн/офлайн
-    # модели, будет разный вызов)
-    # json_path = ml(photo_file_name)
-    #  путь к JSON файлу, полученный от ML модели
+    await state.set_state(Register.num_game)
+
+    await callback.message.answer('Напишите номер игры, под которым будут сохранены результаты...')
+    await callback.message.edit_reply_markup()
+
+
+@router.message(Register.num_game)
+async def num_game_def(message: Message, state: FSMContext):
+    if not message.text:
+        await message.answer("Пожалуйста, пришлите номер игры.")
+        return
+
+    user_input = message.text.strip().split()
+    if len(user_input) != 1:
+        await message.answer("Пожалуйста, пришлите номер игры.")
+        return
+    elif not is_integer(user_input[0]):
+        await message.answer("Пожалуйста, пришлите номер игры.")
+        return
+
+    num = int(user_input[0])
+    await state.update_data(num_game=num)  # исправлено: добавлено await
 
     await state.set_state(Register.json_path)
-    await state.update_data(json_path ="json_from_ml/data.json")
-
-    await callback.message.answer('Отправьте любое сообщение, чтобы продолжить...')
-    await callback.message.edit_reply_markup()
+    await message.answer('Отправьте любое сообщение, чтобы продолжить...')
 
 
 
 @router.message(Register.json_path)
 async def show_calculate_state(message: Message, state: FSMContext):
     data = await state.get_data()
+
     # Чтение содержимого JSON-файла
     try:
         if data.get('json_file_path'):
-            with open(data['json_file_path'], "r") as file:
-                js_dict1 = json.load(file)
+            async with aiofiles.open(data['json_file_path'], "r", encoding='utf-8') as file:
+                content = await file.read()
+                js_dict1 = json.loads(content)
         else:
-            with open(data['json_path'], "r") as file:
-                js_dict1 = json.load(file)
+            async with aiofiles.open(data['json_path'], "r", encoding='utf-8') as file:
+                content = await file.read()
+                js_dict1 = json.loads(content)
 
 
         # Проверяем, что количество имен из JSON совпадает с количеством в списке players
@@ -335,8 +385,10 @@ async def show_calculate_state(message: Message, state: FSMContext):
         await state.clear()
 
     if not data.get('json_file_path'):
+
         path = await json_to_folder(data['players'], data['json_path'],
-                   data['date'], data['photo'].file_id)
+                   data['date'], data['photo'].file_id, data['user_id'],
+                                    data['num_game'])
         await state.update_data(json_file_path=path)
 
 
@@ -358,19 +410,20 @@ async def change_rez_players_2(message: Message, state: FSMContext):
 
 
     if len(user_input) < 3 or not (is_integer(user_input[1]) and is_integer(user_input[2])):
-        print(1)
+
         await message.answer('Напишите имя игрока, номер партии (от 1 до 10),'
                              ' в которой надо поменять кол-во очков и новое кол-во очков '
                              '(Пример: Вася 5 50)')
         return
     elif int(user_input[1]) < 1 or int(user_input[1]) > 10:
-        print(2)
+
         await message.answer('Напишите имя игрока, номер партии (от 1 до 10),'
                                   ' в которой надо поменять кол-во очков и новое кол-во очков '
                                   '(Пример: Вася 5 50)')
         return
-    elif not change_rez_func(data['json_file_path'], user_input):
-        print(3)
+    success = await change_rez_func(data['json_file_path'], user_input)
+    if not success:
+
         await message.answer('Напишите имя игрока, номер партии (от 1 до 10),'
                                   ' в которой надо поменять кол-во очков и новое кол-во очков '
                                   '(Пример: Вася 5 50)')
@@ -390,5 +443,7 @@ async def send_json(callback: CallbackQuery, state: FSMContext):
         file = FSInputFile(data.get('json_path'))
 
     await callback.message.answer_document(file, reply_markup=kb.menu_kb)
+    await callback.message.edit_reply_markup()
     await state.clear()
+
 
