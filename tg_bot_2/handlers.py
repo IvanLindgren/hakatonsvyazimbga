@@ -225,8 +225,19 @@ async def handle_menu_callback(callback: CallbackQuery, state: FSMContext):
 @router.callback_query(F.data == 'view_data')
 async def view_data(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
-    await callback.message.answer('Выберите вариант просмотре данных',
+    folder_path = 'json_files'
+    found_folder = False
+    for item in os.listdir(folder_path):
+        item_path = os.path.join(folder_path, item)
+        if os.path.isdir(item_path):
+            found_folder = True
+            break
+    if found_folder:
+        await callback.message.answer('Выберите вариант просмотре данных',
                                   reply_markup=kb.view_data_kb)
+    else:
+        await callback.message.answer('Данных пока нет',
+                                      reply_markup=kb.menu_kb)
 
     user_id = callback.from_user.id
     await state.update_data(user_id=user_id)
