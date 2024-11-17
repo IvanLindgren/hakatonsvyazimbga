@@ -1,6 +1,6 @@
 import cv2
 import numpy as np
-from main import show_image
+from alghorithm_desktop import show_image
 
 # 1. Загрузка изображения
 image = cv2.imread("photos/2024-10-01/2024-10-01 19-01-57.JPG")
