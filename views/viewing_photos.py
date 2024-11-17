@@ -1,6 +1,6 @@
 import flet as ft # Фреймворк для создания графического приложения
 from flet_navigator import *
-import base64
+from utils.Buttons import Button
 
 
 @route('/viewing_photos')
@@ -39,6 +39,9 @@ def viewing_photos(pg: PageData) -> None:
         tooltip='На главную',
         on_click=lambda _: pg.navigator.navigate('/', page=pg.page)
     )
+
+    btn_recognize = Button(val='Распознать', page=pg.page, height=52).create_btn()
+    btn_recognize.on_click = lambda _: pg.navigator.navigate('/manage_names_page', page=pg.page, args=cur_photo.content)
 
     # Верхняя панель приложенияы
     pg.page.appbar = ft.AppBar(
@@ -85,14 +88,15 @@ def viewing_photos(pg: PageData) -> None:
     # Объект, поверх которого будут выводиться текущее фото
     cur_photo = ft.Card(
         content=images[0],
-        width=800,
-        height=525,
+        width=700,
+        height=500,
         shape=ft.RoundedRectangleBorder(radius=20)
     )
 
     # Добавляем все созданные объекты на страницу
     all_content = ft.Column(
         [
+            btn_recognize,
             ft.Row([btn_prev_photo, cur_photo, btn_next_photo], spacing=10, alignment=ft.MainAxisAlignment.CENTER)
         ], spacing=20, horizontal_alignment=ft.CrossAxisAlignment.CENTER
     )

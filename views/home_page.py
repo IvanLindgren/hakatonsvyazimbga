@@ -69,7 +69,7 @@ def home_page(pg: PageData) -> None:
     def pick_images(e: ft.FilePickerResultEvent) -> None:
         # Если диалоговое окно закрыто и был выбран хотя бы 1 файл
         if image_picker.result and image_picker.result.files:
-            extensions = ['.png', '.jpg'] # Допустимые расширения
+            extensions = ['.png', '.jpg', '.JPG'] # Допустимые расширения
             bad_files = set() # Множество, в котором будут хранится файлы с некорректным расширением
             duplicates = set() # Множество, в котором будут хранится файлы дубликаты
             
@@ -111,7 +111,7 @@ def home_page(pg: PageData) -> None:
         # Перебираем каждый файл в указанной диреткории
         for file in Path(e.path).iterdir():
             # Если файл нужного формата и не является дубликатом
-            if file.suffix in ['.png', '.jpg'] and file.name not in sel_files:
+            if file.suffix in ['.png', '.jpg', '.JPG'] and file.name not in sel_files:
                 # Добавляем имя корректного файла в список 
                 sel_files_names.content.controls.append( 
                         ft.Text(
@@ -122,7 +122,7 @@ def home_page(pg: PageData) -> None:
                             width=400
                         )
                     )
-                sel_files[file.name] = Path(file) # Добавляем файл в хеш-таблицу
+                sel_files[file.name] = str(Path(file)) # Добавляем файл в хеш-таблицу
                 btn_see_photos.disabled = False
                 btn_see_photos.update()
         
@@ -135,7 +135,7 @@ def home_page(pg: PageData) -> None:
             zip = zip_picker.result.files[0]
             if Path(zip.name).suffix == '.zip':
                 
-                extensions = ['.png', '.jpg'] # Допустимые расширения
+                extensions = ['.png', '.jpg', '.JPG'] # Допустимые расширения
                 with zipfile.ZipFile(zip.path) as zf:
                     file_names = zf.namelist()
                     
