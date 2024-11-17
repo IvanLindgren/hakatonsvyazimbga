@@ -1,9 +1,11 @@
 import flet as ft
 import time
 import zipfile
+import base64
 from pathlib import Path
 from flet_navigator import *
 from utils.Buttons import Button
+from PIL import Image
 
 
 @route('/')
@@ -138,7 +140,7 @@ def home_page(pg: PageData) -> None:
                     file_names = zf.namelist()
                     
                     for file in file_names:
-                        if Path(file).suffix in extensions:
+                        if Path(file).suffix in extensions and file not in sel_files:
                             sel_files_names.content.controls.append( 
                                 ft.Text(
                                     file,
@@ -148,9 +150,12 @@ def home_page(pg: PageData) -> None:
                                     width=400
                                 )
                             )
-                            sel_files[file] = ft.Image(Path(file))
-                            btn_see_photos.disabled = False
-                            btn_see_photos.update()
+                            
+                            with zf.open(file) as img:
+                                
+                                sel_files[file] = base64.b64encode(img.read())
+                                btn_see_photos.disabled = False
+                                btn_see_photos.update()
             
             sel_files_names.update()
 

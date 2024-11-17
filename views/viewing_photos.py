@@ -1,5 +1,6 @@
 import flet as ft # Фреймворк для создания графического приложения
 from flet_navigator import *
+import base64
 
 
 @route('/viewing_photos')
@@ -7,7 +8,7 @@ def viewing_photos(pg: PageData) -> None:
     
     # Список путей к выбранным на предыдущей странице файлам
     pathes = pg.arguments
-    print(pathes)
+    
     # Следующее фото
     def next_photo(e) -> None:
         cur_index = images.index(cur_photo.content)
@@ -73,7 +74,13 @@ def viewing_photos(pg: PageData) -> None:
     btn_next_photo.on_click = next_photo
     btn_prev_photo.on_click = prev_photo
     
-    images = [ft.Image(path) for path in pathes]
+    
+    images = []
+    for path in pathes:
+        if isinstance(path, bytes):
+            images.append(ft.Image(src_base64=path.decode('utf-8')))
+        else:
+            images.append(ft.Image(path))
 
     # Объект, поверх которого будут выводиться текущее фото
     cur_photo = ft.Card(
