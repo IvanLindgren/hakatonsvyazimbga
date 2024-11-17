@@ -1,0 +1,8 @@
+opencv-python
+numpy
+easyocr
+scikit-learn
+flet
+matplotlib
+flet_navigator
+pyinstaller
