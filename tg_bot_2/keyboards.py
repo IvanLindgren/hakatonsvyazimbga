@@ -14,8 +14,7 @@ photo_kb = InlineKeyboardMarkup(inline_keyboard=[
 
 start_kb = InlineKeyboardMarkup(inline_keyboard=[
     [InlineKeyboardButton(text='Добавить фото', callback_data='add_photo')],
-    [InlineKeyboardButton(text='Посмотреть данные', callback_data='view_data')],
-    [InlineKeyboardButton(text='Помощь(/help)', callback_data='print_help')],
+    [InlineKeyboardButton(text='Посмотреть данные', callback_data='view_data')]
 ])
 
 menu_kb = InlineKeyboardMarkup(inline_keyboard=[
@@ -25,6 +24,11 @@ menu_kb = InlineKeyboardMarkup(inline_keyboard=[
 show_calculate_state_kb = InlineKeyboardMarkup(inline_keyboard=[
     [InlineKeyboardButton(text="Изменить", callback_data="change_rez_players")],
 [InlineKeyboardButton(text="Отправить json и выйти", callback_data="send_json")]
+])
+
+view_data_kb = InlineKeyboardMarkup(inline_keyboard=[
+    [InlineKeyboardButton(text="За один день", callback_data="generate_report_one_day")],
+[InlineKeyboardButton(text="За несколько дней", callback_data="generate_report_several_days")]
 ])
 
 
