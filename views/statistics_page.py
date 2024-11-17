@@ -5,7 +5,7 @@ import datetime
 import matplotlib
 import json
 from utils.Buttons import Button
-matplotlib.use('agg')
+
 
 
 @route('/statistics_page')
