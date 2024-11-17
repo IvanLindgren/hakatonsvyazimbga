@@ -4,7 +4,11 @@ from aiogram.types import Message, CallbackQuery
 from aiogram.fsm.state import StatesGroup, State
 from aiogram.fsm.context import FSMContext
 from aiogram.types import FSInputFile
+import logging
 
+# Настроим логирование
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 import datetime
 import json
@@ -30,7 +34,7 @@ async def json_to_folder(players: list, json_path: str,
     new_data = {}
     count = 0
     date_str = date.strftime('%d.%m.%Y')
-
+    logger.info("Выполняется json_to_folder")
     # Открытие исходного файла асинхронно
     async with aiofiles.open(json_path, "r") as file:
         js_dict1 = json.loads(await file.read())
@@ -59,12 +63,7 @@ async def json_to_folder(players: list, json_path: str,
     return file_path
 
 async def create_or_update_names_file(folder_path: str, game_data: dict, num_game: int):
-    """
-    Создаёт или обновляет JSON-файл names.json с информацией об игроках за конкретный день.
-    :param folder_path: Путь к папке с данными за день.
-    :param game_data: Данные игры (имена игроков и их результаты).
-    :param num_game: Номер текущей игры.
-    """
+    logger.info("Выполняется create_or_update_names_file")
     names_file_path = os.path.join(folder_path, "names.json")
     names_data = {}
 
@@ -103,6 +102,7 @@ async def create_or_update_names_file(folder_path: str, game_data: dict, num_gam
 
 
 def get_combined_player_stats(data_dicts):
+    logger.info("Выполняется get_combined_player_stats")
     result = ""
     count = 0
     for idx, data in enumerate(data_dicts):  # Обрабатываем каждый словарь из списка
@@ -126,6 +126,7 @@ def get_combined_player_stats(data_dicts):
 
 
 async def change_rez_func(file_path:str, change_rez:list)->bool:
+    logger.info("Выполняется change_rez_func")
     async with aiofiles.open(file_path, 'r', encoding='utf-8') as file:
         content = await file.read()
         js_dict1: dict = json.loads(content)
@@ -144,6 +145,7 @@ async def change_rez_func(file_path:str, change_rez:list)->bool:
 
 
 def process_player_data(data: dict, players: list) -> str:
+    logger.info("Выполняется process_player_data")
     new_data = {}
     count = 0
 
@@ -162,6 +164,7 @@ def process_player_data(data: dict, players: list) -> str:
 
 
 def get_player_stats(data):
+    logger.info("Выполняется get_player_stats")
     result = ""
     for player_id, stats in data.items():
         num_games = len(stats['GAMES'])
@@ -180,6 +183,7 @@ def get_player_stats(data):
 
 # Определяем состояния для FSM
 class Register(StatesGroup):
+    logger.info("Выполняется get_combined_player_stats")
     photo = State()
     result = State()
     date = State()
@@ -201,11 +205,13 @@ async def show_menu(event):
 
 @router.message(CommandStart())
 async def cmd_start(message: Message):
+    logger.info("Выполняется cmd_start")
     await message.answer('Привет! Я телеграм бот для...', reply_markup=kb.menu_kb)
 
 
 @router.message(Command('menu'))
 async def handle_menu_command(message: Message, state: FSMContext):
+    logger.info("Выполняется handle_menu_command")
     await state.clear()
     await show_menu(message)
 
@@ -214,6 +220,7 @@ async def handle_menu_command(message: Message, state: FSMContext):
 
 @router.callback_query(F.data == 'menu')
 async def handle_menu_callback(callback: CallbackQuery, state: FSMContext):
+    logger.info("Выполняется handle_menu_callback")
     await callback.answer()
     await state.clear()
 
@@ -224,6 +231,7 @@ async def handle_menu_callback(callback: CallbackQuery, state: FSMContext):
 
 @router.callback_query(F.data == 'view_data')
 async def view_data(callback: CallbackQuery, state: FSMContext):
+    logger.info("Выполняется view_data")
     await callback.answer()
     folder_path = 'json_files'
     found_folder = False
@@ -245,6 +253,7 @@ async def view_data(callback: CallbackQuery, state: FSMContext):
 
 @router.callback_query(F.data.in_(['generate_report_one_day', 'generate_report_several_days']))
 async def generate_report_one_day_func(callback: CallbackQuery, state: FSMContext):
+    logger.info("Выполняется generate_report_one_day_func")
     await callback.answer()
     result = ''
     data = await state.get_data()
@@ -270,6 +279,7 @@ async def generate_report_one_day_func(callback: CallbackQuery, state: FSMContex
 
 @router.message(Register.generate_report_several_day_date)
 async def handle_player_names(message: Message, state: FSMContext):
+    logger.info("Выполняется handle_player_names")
     date_in_msg = []
     list_of_dict = []
     try:
@@ -307,6 +317,7 @@ async def handle_player_names(message: Message, state: FSMContext):
 
 @router.message(Register.generate_report_one_day_date)
 async def handle_player_names(message: Message, state: FSMContext):
+    logger.info("Выполняется handle_player_names")
     try:
         date_in_msg = datetime.datetime.strptime(message.text.strip(), "%d.%m.%Y").date()
     except ValueError:
@@ -341,6 +352,7 @@ async def handle_player_names(message: Message, state: FSMContext):
 
 @router.callback_query(F.data == 'set_name')
 async def start_set_name(callback: CallbackQuery, state: FSMContext):
+    logger.info("Выполняется start_set_name")
     await callback.answer()
 
     await state.set_state(Register.players)
@@ -351,6 +363,7 @@ async def start_set_name(callback: CallbackQuery, state: FSMContext):
 
 @router.message(Register.players)
 async def handle_player_names(message: Message, state: FSMContext):
+    logger.info("Выполняется handle_player_names")
     names = message.text.split()
 
     if len(names) < 2 or len(names) > 4:
@@ -381,6 +394,7 @@ async def handle_player_names(message: Message, state: FSMContext):
 
 @router.callback_query(F.data == 'set_date')
 async def start_set_date(callback: CallbackQuery, state: FSMContext):
+    logger.info("Выполняется start_set_date")
     await callback.answer()
     await callback.message.answer('Пожалуйста, отправьте дату в формате ДД.ММ.ГГГГ:')
 
@@ -391,6 +405,7 @@ async def start_set_date(callback: CallbackQuery, state: FSMContext):
 
 @router.message(Register.date)
 async def handle_date(message: Message, state: FSMContext):
+    logger.info("Выполняется handle_date")
     try:
         date_in_msg = datetime.datetime.strptime(message.text, "%d.%m.%Y").date()
     except ValueError:
@@ -420,6 +435,7 @@ async def handle_date(message: Message, state: FSMContext):
 
 @router.callback_query(F.data.in_(['change_photo', 'add_photo']))
 async def add_photo(callback: CallbackQuery, state: FSMContext):
+    logger.info("Выполняется add_photo")
     await callback.answer()
     await state.clear()
 
@@ -436,6 +452,7 @@ async def add_photo(callback: CallbackQuery, state: FSMContext):
 
 @router.message(Register.photo)
 async def set_photo(message: Message, state: FSMContext):
+    logger.info("Выполняется set_photo")
     from main import bot
     if not message.photo:
         await message.answer("Пожалуйста, пришлите фото.")
@@ -487,6 +504,7 @@ async def set_photo(message: Message, state: FSMContext):
 
 @router.callback_query(F.data.in_(['do_calculate_offline', 'do_calculate_online']))
 async def do_calculate(callback: CallbackQuery, state: FSMContext):
+    logger.info("Выполняется do_calculate")
 
 
     data = await state.get_data()
@@ -510,6 +528,7 @@ async def do_calculate(callback: CallbackQuery, state: FSMContext):
 
 @router.message(Register.num_game)
 async def num_game_def(message: Message, state: FSMContext):
+    logger.info("Выполняется num_game_def")
     if not message.text:
         await message.answer("Пожалуйста, пришлите номер игры.")
         return
@@ -532,6 +551,7 @@ async def num_game_def(message: Message, state: FSMContext):
 
 @router.message(Register.json_path)
 async def show_calculate_state(message: Message, state: FSMContext):
+    logger.info("Выполняется show_calculate_state")
     data = await state.get_data()
 
     # Чтение содержимого JSON-файла
@@ -584,6 +604,7 @@ async def show_calculate_state(message: Message, state: FSMContext):
 
 @router.callback_query(F.data == 'change_rez_players')
 async def change_rez_players(callback: CallbackQuery, state: FSMContext):
+    logger.info("Выполняется change_rez_players")
     await state.set_state(Register.change_rez)
     await callback.answer()
     await callback.message.answer('Напишите имя игрока, номер партии (от 1 до 10),'
@@ -622,6 +643,7 @@ async def change_rez_players_2(message: Message, state: FSMContext):
 
 @router.callback_query(F.data == 'send_json')
 async def send_json(callback: CallbackQuery, state: FSMContext):
+    logger.info("Выполняется send_json")
     await callback.answer()
     data = await state.get_data()
     if data.get('json_file_path'):
