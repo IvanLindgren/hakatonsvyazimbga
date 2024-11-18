@@ -7,6 +7,7 @@ from flet_navigator import *
 from desktop.utils.Buttons import Button
 
 
+
 @route('/')
 def home_page(pg: PageData) -> None:
     

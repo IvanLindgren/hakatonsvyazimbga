@@ -1,3 +1,5 @@
+import os
+import sys
 import flet as ft
 import warnings
 from flet_navigator import *
@@ -6,7 +8,12 @@ from views.viewing_photos import viewing_photos
 from views.statistics_page import statistics_page
 from views.manage_names_page import manage_names_page
 warnings.filterwarnings('ignore')
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'views'))
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'utils'))
 
+
+print("sys.path:", sys.path)
 
 def main(page: ft.Page) -> None:
     

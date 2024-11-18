@@ -6,10 +6,8 @@ import json
 from desktop.utils.Buttons import Button
 
 
-
 @route('/statistics_page')
 def statistics_page(pg: PageData) -> None:
-    
     def calculate_scores(player_results):
         """
         Рассчитывает очки на основе заданных правил.
@@ -21,50 +19,45 @@ def statistics_page(pg: PageData) -> None:
         dynamic_scores = [
             (result - 100) // 30 for result in player_results
         ]
-        return f"Всего очков {total_points}, Среднее значение {average_points}, Динамика {dynamic_scores}"
         return total_points, average_points, dynamic_scores
 
-
-    def generate_daily_report(players_scores):
+    def generate_table(players_scores, names):
         """
-        Генерирует отчет по игрокам на основе данных за день.
-        :param players_scores: Результаты игроков.
-        :return: Отчет в виде словаря.
+        Генерирует таблицу с результатами игроков.
         """
-        report = {}
+        table_rows = []
         for player, scores in players_scores.items():
-            total, average, dynamics = calculate_scores(scores)
-            report[player] = {
-                "Игры": len(scores),
-                "Сумма очков": total,
-                "Средний результат": round(average, 2),
-                "Динамика": dynamics,
-                "Результаты по играм": scores
-            }
-        return report
+            name = names.get(player, player)
+            if name is None:
+                name = f"Игрок {player}"
 
+            total = sum(scores) if scores else 0
+            average = round(total / len(scores), 2) if scores else 0
+            score_list = " → ".join(map(str, scores)) if scores else "Нет данных"
 
-    def generate_period_report(players_scores_by_day):
-        """
-        Генерирует отчет за несколько дней.
-        :param players_scores_by_day: Словарь с данными за каждый день.
-        :return: Отчет в виде словаря.
-        """
-        report = {}
-        for date, daily_scores in players_scores_by_day.items():
-            daily_report = generate_daily_report(daily_scores)
-            report[date] = daily_report
-        return report
+            table_rows.append(
+                ft.DataRow(
+                    cells=[
+                        ft.DataCell(ft.Text(name)),
+                        ft.DataCell(ft.Text(str(total))),
+                        ft.DataCell(ft.Text(str(average))),
+                        ft.DataCell(ft.Text(score_list)),
+                    ]
+                )
+            )
 
+        table = ft.DataTable(
+            columns=[
+                ft.DataColumn(ft.Text("Имя игрока")),
+                ft.DataColumn(ft.Text("Сумма очков")),
+                ft.DataColumn(ft.Text("Среднее")),
+                ft.DataColumn(ft.Text("Результаты")),
+            ],
+            rows=table_rows
+        )
 
-    def log_process(message):
-        """
-        Выводит сообщения в лог программы.
-        :param message: Текст сообщения.
-        """
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        print(f"[{timestamp}] {message}")
-
+        output.content = table
+        pg.page.update()
 
     def plot_player_performance(players_scores):
         """
@@ -73,34 +66,23 @@ def statistics_page(pg: PageData) -> None:
         """
         for player, scores in players_scores.items():
             plt.plot(range(1, len(scores) + 1), scores, marker="o", label=player)
-        
+
         plt.title("Результативность игроков")
         plt.xlabel("Игра")
         plt.ylabel("Очки")
         plt.legend()
         plt.grid(True)
         plt.show()
-    
-    def btn_calculate_scores_click(e):
-        output.content = ft.Column(
-            [
-                ft.Text(value=f" Игрок {names['p1']}: {calculate_scores(players_scores['p1'])}", color=ft.colors.WHITE),
-                ft.Text(value=f" Игрок {names['p2']}: {calculate_scores(players_scores['p2'])}", color=ft.colors.WHITE),
-                ft.Text(value=f" Игрок {names['p3']}: {calculate_scores(players_scores['p3'])}", color=ft.colors.WHITE),
-                ft.Text(value=f" Игрок {names['p4']}: {calculate_scores(players_scores['p4'])}", color=ft.colors.WHITE)
-            ],
-            horizontal_alignment=ft.MainAxisAlignment.CENTER
-        )
-        pg.page.update()
 
-    def btn_generate_daily_report_click(e):
-        pass
+    def btn_generate_table_click(e):
+        generate_table(players_scores, names)
 
-    
+    def btn_plot_player_performance_click(e):
+        plot_player_performance(players_scores)
+
     players_scores, names = pg.arguments
     players_scores = json.loads(players_scores)
-    
-    
+
     pg.page.title = 'Статистика'
     pg.page.window.width = 1000
     pg.page.window.height = 700
@@ -108,7 +90,7 @@ def statistics_page(pg: PageData) -> None:
     pg.page.theme_mode = ft.ThemeMode.DARK
     pg.page.vertical_alignment = ft.MainAxisAlignment.CENTER
     pg.page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
-    
+
     btn_go_home = ft.IconButton(
         icon=ft.icons.HOME,
         icon_size=52,
@@ -116,7 +98,7 @@ def statistics_page(pg: PageData) -> None:
         tooltip='На главную',
         on_click=lambda _: pg.navigator.navigate('/', page=pg.page)
     )
-    
+
     pg.page.appbar = ft.AppBar(
         title=ft.Text(
             value='Статистика',
@@ -131,30 +113,22 @@ def statistics_page(pg: PageData) -> None:
         actions=[btn_go_home]
     )
 
-    btn_calculate_scores = Button(val='Статистика', page=pg.page).create_btn()
-    btn_calculate_scores.on_click = btn_calculate_scores_click
-    #btn_generate_daily_report = Button(val='Отчет за день', page=pg.page).create_btn()
+    btn_generate_table = Button(val='Показать результаты', page=pg.page).create_btn()
+    btn_generate_table.on_click = btn_generate_table_click
     btn_plot_player_performance = Button(val='Графики', page=pg.page).create_btn()
-    btn_plot_player_performance.on_click = lambda _: plot_player_performance(players_scores)
-
+    btn_plot_player_performance.on_click = btn_plot_player_performance_click
 
     output = ft.Card(
-        height=500, 
+        height=500,
         width=800,
     )
 
     btns = ft.Row(
         controls=[
-            btn_calculate_scores,
+            btn_generate_table,
             btn_plot_player_performance
         ],
         alignment=ft.MainAxisAlignment.CENTER
     )
 
     pg.page.add(ft.Column([btns, output], horizontal_alignment=ft.CrossAxisAlignment.CENTER))
-    
-
-    
-
-
-    

@@ -9,11 +9,10 @@ from sklearn.linear_model import LinearRegression
 def ml_alg(path: str):
     def resize_to_fixed_resolution(image, width=1024, height=768):
         """
-        Изменяет размер изображения до фиксированного разрешения.
+        Приводит изображение к фиксированному разрешению.
         """
         resized_image = cv2.resize(image, (width, height), interpolation=cv2.INTER_AREA)
         return resized_image
-
 
     def warp_perspective(image, points):
         """
@@ -29,7 +28,6 @@ def ml_alg(path: str):
         matrix = cv2.getPerspectiveTransform(points, dst)
         warped_image = cv2.warpPerspective(image, matrix, (width, height))
         return warped_image
-
 
     def select_points(image, num_points):
         """
@@ -48,18 +46,28 @@ def ml_alg(path: str):
         temp_image = image.copy()
         cv2.imshow("Select Points", temp_image)
         cv2.setMouseCallback("Select Points", click_event)
-        print(f"Пожалуйста, выберите {num_points} точек на изображении.")
+        print(f"Пожалуйста, выберите {num_points} точки на изображении.")
         cv2.waitKey(0)
 
         if len(points) != num_points:
             raise ValueError(f"Необходимо выбрать ровно {num_points} точки.")
         return np.array(points, dtype="float32")
 
+    def draw_grid(image, grid_lines):
+        """
+        Рисует сетку на изображении.
+        """
+        for y in grid_lines["horizontal"]:
+            cv2.line(image, (0, y), (image.shape[1], y), (0, 255, 0), 2)
+        for x in grid_lines["vertical"]:
+            cv2.line(image, (x, 0), (x, image.shape[0]), (0, 255, 0), 2)
+        cv2.imshow("Grid", image)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
 
     def get_grid_lines(image, file_path="grid_lines.json"):
         """
         Позволяет пользователю определить линии сетки (горизонтальные и вертикальные).
-        Если файл с линиями уже существует, использует его.
         """
         if os.path.exists(file_path):
             with open(file_path, "r") as f:
@@ -79,7 +87,6 @@ def ml_alg(path: str):
             json.dump(grid_lines, f)
         return grid_lines
 
-
     def split_into_grid(image, grid_lines):
         """
         Делит изображение на ячейки с использованием линий сетки.
@@ -91,10 +98,9 @@ def ml_alg(path: str):
         for i in range(len(horizontal_lines) - 1):
             for j in range(len(vertical_lines) - 1):
                 cell = image[horizontal_lines[i]:horizontal_lines[i + 1],
-                            vertical_lines[j]:vertical_lines[j + 1]]
+                             vertical_lines[j]:vertical_lines[j + 1]]
                 grid_cells.append(cell)
         return grid_cells[:40]  # Возвращаем ровно 40 ячеек
-
 
     def enhance_cell(cell):
         """
@@ -104,19 +110,14 @@ def ml_alg(path: str):
             cell = cv2.cvtColor(cell, cv2.COLOR_BGR2GRAY)
         return cell
 
-
-    def recognize_cells_with_ocr(cells, show_cells=False):
+    def recognize_cells_with_ocr(cells):
         """
         Распознаёт текст в каждой ячейке с помощью EasyOCR.
-        :param cells: Список ячеек для обработки.
-        :param show_cells: Флаг для отображения увеличенных ячеек и распознанного текста.
         """
-        reader = easyocr.Reader(['en'], gpu=False)
+        reader = easyocr.Reader(['en'], gpu=True)
         results = []
-        for idx, cell in enumerate(cells):
+        for cell in cells:
             enhanced_cell = enhance_cell(cell)
-
-            # Увеличение ячейки для улучшения распознавания
             enlarged_cell = cv2.resize(enhanced_cell, None, fx=2, fy=2, interpolation=cv2.INTER_LINEAR)
             ocr_results = reader.readtext(enlarged_cell)
 
@@ -124,26 +125,12 @@ def ml_alg(path: str):
                 text = " ".join([res[1] for res in ocr_results]).strip()
                 results.append(text)
             else:
-                text = ""
-                results.append(text)
-
-            if show_cells:
-                print(f"Ячейка {idx + 1}: {text}")
-                cv2.imshow(f"Ячейка {idx + 1}", enlarged_cell)
-                cv2.waitKey(0)
-
-        if show_cells:
-            cv2.destroyAllWindows()
-
+                results.append("")
         return results
-
 
     def parse_bowling_scores(scores):
         """
         Интерпретирует результаты боулинга.
-        Удаляет некорректные данные:
-        1. Исключает значения >250.
-        2. Проверяет, чтобы результаты всегда увеличивались.
         """
         players_scores = {"p1": [], "p2": [], "p3": [], "p4": []}
         current_player = 0
@@ -152,15 +139,13 @@ def ml_alg(path: str):
             try:
                 score = int(score.split()[-1])
 
-                if score > 250:
+                if score > 200:
                     continue
 
-                if players_scores[f"p{current_player + 1}"]:
-                    last_score = players_scores[f"p{current_player + 1}"][-1]
-                    if score < last_score:
-                        current_player += 1
-                        if current_player >= 4:
-                            break
+                if players_scores[f"p{current_player + 1}"] and score < players_scores[f"p{current_player + 1}"][-1]:
+                    current_player += 1
+                    if current_player >= 4:
+                        break
 
                 if current_player < 4:
                     players_scores[f"p{current_player + 1}"].append(score)
@@ -186,8 +171,7 @@ def ml_alg(path: str):
 
         return players_scores
 
-
-    def process_bowling_scoreboard(image_path, show_cells=True):
+    def process_bowling_scoreboard(image_path):
         """
         Основной процесс обработки табло.
         """
@@ -201,16 +185,17 @@ def ml_alg(path: str):
         roi = warp_perspective(resized_image, points)
 
         grid_lines = get_grid_lines(roi)
+        draw_grid(roi.copy(), grid_lines)  # Отображение сетки
         cells = split_into_grid(roi, grid_lines)
-        ocr_results = recognize_cells_with_ocr(cells, show_cells)
+        ocr_results = recognize_cells_with_ocr(cells)
 
         return parse_bowling_scores(ocr_results)
 
-
+    image_path = path
     image_path = path
     if not os.path.exists(image_path):
         print("Изображение не найдено.")
     else:
-        players_scores = process_bowling_scoreboard(image_path, show_cells=False)
+        players_scores = process_bowling_scoreboard(image_path)
+        print(json.dumps(players_scores, indent=4, ensure_ascii=False))
         return json.dumps(players_scores, indent=4, ensure_ascii=False)
-
